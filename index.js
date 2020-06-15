@@ -48,26 +48,43 @@ const addQuestion = (question = null) => {
 
 const getQuestion = id => questions.filter(q => q.active).find(q => q.id == id);
 
-const getRndQuestion = () => getQuestion(getRandomInt(1, questions.filter(q => q.active).length));
-
-const getDirectSubQuestions = id => questions.filter(q => q.active).filter(q => q.parent_id == id);
-
-const contemplateQuestion = id => {
-
+const getRndQuestion = () => {
+    console.log(questions);
+    return randomItemFromArr(questions.filter(q => q.active));    
 }
 
-let currQuestion = getRndQuestion();
+const getRndSubQuestion = (id) => {
+    return randomItemFromArr(getSubQuestions[id]);
+}
+
+const randomItemFromArr = (items) => {
+    console.log(items);
+    return items[
+        Math.floor(
+            Math.random() * items.length
+        )
+    ];
+}
+
+const getSubQuestions = id => questions.filter(q => q.active).filter(q => q.parent_id == id);
+
+let currQuestion = null;
+let lastTimeStamp = null;
 
 function init() {
     next();
 }
 
 function next() {
-    try {
-        questions.find(q => q.id == currQuestion.id).active = false;
-    } catch (e) {
-        resetQuestions();
+    console.clear();
+    console.log(questions);
+    if (currQuestion == null) {
+        currQuestion = getRndQuestion();
     }
+
+    lastTimeStamp = Date.now();
+
+    currQuestion.active = false;
 
     inquirer
         .prompt([
@@ -79,10 +96,23 @@ function next() {
             }
         ])
         .then(answers => {
+            // add time spent to the prev question
+            if (lastTimeStamp && currQuestion) {
+                currQuestion.time_spent += Date.now() - lastTimeStamp; 
+            }
+
+
             switch(answers.next) {
                 case CHOICE_RANDOM_QUESTION:
                     currQuestion = getRndQuestion();
-                    next();
+                case CHOICE_RANDOM_SUB_QUESTION:
+                    currQuestion = getRndSubQuestion();
+            }
+
+            if (currQuestion == undefined) {
+                resetQuestions();
+            } else {
+                next();
             }
         });
 }
