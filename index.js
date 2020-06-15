@@ -23,14 +23,12 @@ const questions = [
     }
 ];
 
+const CHOICE_NEXT_MOST_LOVED_QUESTION = 'next most loved question';
 const CHOICE_RANDOM_QUESTION = 'random question';
 const CHOICE_RANDOM_SUB_QUESTION = 'random sub question';
 const CHOICE_ADD_QUESTION = 'add question';
 const CHOICE_ADD_SUB_QUESTION = 'add sub question';
-
-const addQuestion = (question = null) => {
-
-}
+const CHOICE_EXIT = 'back to real life';
 
 const getQuestion = id => questions.filter(q => q.is_active).find(q => q.id == id);
 
@@ -40,6 +38,10 @@ const getRndQuestion = () => {
 
 const getRndSubQuestion = (id) => {
     return randomItemFromArr(getSubQuestions(id));
+}
+
+const getMostTimeSpentQuestion = () => {
+    return questions.sort((q1, q2) => q2.time_spent - q1.time_spent)[0];
 }
 
 const randomItemFromArr = (items) => {
@@ -54,12 +56,15 @@ const getSubQuestions = id => questions.filter(q => q.is_active).filter(q => q.p
 
 let currQuestion = null;
 let lastTimeStamp = null;
+let infoMessage = '';
 
 function init() {
+    console.clear();
     next();
 }
 
 function next() {
+    console.clear();
     if (currQuestion == null) {
         currQuestion = getRndQuestion();
     }
@@ -73,12 +78,21 @@ function next() {
             {
                 type: 'list',
                 name: 'next',
-                message: currQuestion.value + '?',
-                choices: [CHOICE_RANDOM_QUESTION, CHOICE_RANDOM_SUB_QUESTION],
+                message: infoMessage + (infoMessage ? '\n' : '') + 
+                '||| ' + currQuestion.value + '? |||',
+                choices: [
+                    CHOICE_RANDOM_QUESTION, 
+                    CHOICE_RANDOM_SUB_QUESTION, 
+                    CHOICE_NEXT_MOST_LOVED_QUESTION,
+                    CHOICE_EXIT,
+                ],
             }
         ])
         .then(answers => {
             console.clear();
+            if (infoMessage != '') {
+                infoMessage = '';
+            }
             // add time spent to the prev question
             if (lastTimeStamp && currQuestion) {
                 currQuestion.time_spent += Date.now() - lastTimeStamp; 
@@ -91,27 +105,36 @@ function next() {
                 case CHOICE_RANDOM_SUB_QUESTION:
                     currQuestion = getRndSubQuestion(currQuestion.id);
                     if (currQuestion == undefined) {
-                        console.log('You exhausted this question chain. Let me give you a new one instead!');
+                        infoMessage = 'You exhausted this question chain. Let me give you a new one instead!';
                         currQuestion = getRndQuestion();
                     }
                     break;
+                case CHOICE_NEXT_MOST_LOVED_QUESTION:
+                    currQuestion = getMostTimeSpentQuestion(); 
+                    break;
+                case CHOICE_ADD_QUESTION:
+                    addQuestion(); 
+                    break;
+                case CHOICE_EXIT:
+                    logPrompt('Come back anytime! :)');
+                    return;
             }
 
             if (currQuestion == undefined) {
-                resetQuestions();
+                resetQuestionsPrompt();
             } else {
                 next();
             }
         });
 }
 
-function resetQuestions() {
+function resetQuestionsPrompt() {
     inquirer
         .prompt([
             {
                 type: 'confirm',
                 name: 'reset',
-                message: 'Hit ENTER to reset all the questions',
+                message: 'You exhausted all the questions. Hit ENTER to reset.',
             }
         ])
         .then(answers => {
@@ -119,9 +142,31 @@ function resetQuestions() {
                 questions.forEach(q => q.is_active = true);   
                 next();
             } else {
-                console.log('Thank you for having contemplated all the questions!');
+                logPrompt('Thank you for having contemplated all the questions!');
             }
         });
 }
 
+function addQuestionPromt() {
+    inquirer
+        .prompt([
+
+        ])
+        .then(answers => {
+
+        });
+}
+
+const ui = new inquirer.ui.BottomBar();
+
+function logPrompt(text) {
+    ui.updateBottomBar(text);    
+    //console.log('--- ' + text + ' ---');
+}
+
+function test() {
+    const arr = [1, 5, 3];
+    console.log(arr.sort((a,b) => a - b));
+}
+//test();
 init();
