@@ -41,7 +41,9 @@ const getRndSubQuestion = (id) => {
 }
 
 const getMostTimeSpentQuestion = () => {
-    return questions.sort((q1, q2) => q2.time_spent - q1.time_spent)[0];
+    return questions
+        .filter(q => q.is_active)
+        .sort((q1, q2) => q2.time_spent - q1.time_spent)[0];
 }
 
 const randomItemFromArr = (items) => {
@@ -56,14 +58,17 @@ const getSubQuestions = id => questions.filter(q => q.is_active).filter(q => q.p
 
 let currQuestion = null;
 let lastTimeStamp = null;
-let infoMessage = '';
 
 function init() {
-    console.clear();
-    next();
+    nextPrompt();
 }
 
-function next() {
+function nextPrompt(choices = [
+    CHOICE_RANDOM_QUESTION, 
+    CHOICE_RANDOM_SUB_QUESTION, 
+    CHOICE_NEXT_MOST_LOVED_QUESTION,
+    CHOICE_EXIT
+], message = null) {
     console.clear();
     if (currQuestion == null) {
         currQuestion = getRndQuestion();
@@ -78,25 +83,19 @@ function next() {
             {
                 type: 'list',
                 name: 'next',
-                message: infoMessage + (infoMessage ? '\n' : '') + 
-                '||| ' + currQuestion.value + '? |||',
-                choices: [
-                    CHOICE_RANDOM_QUESTION, 
-                    CHOICE_RANDOM_SUB_QUESTION, 
-                    CHOICE_NEXT_MOST_LOVED_QUESTION,
-                    CHOICE_EXIT,
-                ],
+                message: message || promptMessage(),
+                choices: choices
             }
         ])
         .then(answers => {
             console.clear();
-            if (infoMessage != '') {
-                infoMessage = '';
-            }
             // add time spent to the prev question
             if (lastTimeStamp && currQuestion) {
                 currQuestion.time_spent += Date.now() - lastTimeStamp; 
             }
+
+            let choices = [];
+            let infoMessage = null;
 
             switch(answers.next) {
                 case CHOICE_RANDOM_QUESTION:
@@ -116,17 +115,22 @@ function next() {
                     addQuestion(); 
                     break;
                 case CHOICE_EXIT:
-                    logPrompt('Come back anytime! :)');
-                    return;
+                    currQuestion = null;
+                    choices = [];
+                    infoMessage = 'Come back anytime! :)';
+                    break;
             }
+
 
             if (currQuestion == undefined) {
                 resetQuestionsPrompt();
             } else {
-                next();
+                nextPrompt(choices, promptMessage(infoMessage));
             }
         });
 }
+
+const promptMessage = (infoMessage) => (infoMessage ? infoMessage + '\n' : '') + (currQuestion ? '||| ' + currQuestion.value + '? |||' : '');
 
 function resetQuestionsPrompt() {
     inquirer
@@ -140,29 +144,14 @@ function resetQuestionsPrompt() {
         .then(answers => {
             if (answers.reset) {
                 questions.forEach(q => q.is_active = true);   
-                next();
+                nextPrompt();
             } else {
                 logPrompt('Thank you for having contemplated all the questions!');
             }
         });
 }
 
-function addQuestionPromt() {
-    inquirer
-        .prompt([
-
-        ])
-        .then(answers => {
-
-        });
-}
-
 const ui = new inquirer.ui.BottomBar();
-
-function logPrompt(text) {
-    ui.updateBottomBar(text);    
-    //console.log('--- ' + text + ' ---');
-}
 
 function test() {
     const arr = [1, 5, 3];
